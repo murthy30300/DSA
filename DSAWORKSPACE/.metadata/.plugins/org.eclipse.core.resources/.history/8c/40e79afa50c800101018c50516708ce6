@@ -1,0 +1,10 @@
+package com.tle.ps;
+
+public class MikeGcd {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

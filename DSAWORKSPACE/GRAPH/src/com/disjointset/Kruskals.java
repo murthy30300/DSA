@@ -1,0 +1,73 @@
+package com.disjointset;
+
+import java.util.*;
+
+class Edge implements Comparable<Edge> {
+
+	int src, wt, dest;
+
+	public Edge(int src, int dest, int wt) {
+		this.src = src;
+		this.wt = wt;
+		this.dest = dest;
+	}
+
+	public int compareTo(Edge edge) {
+		return this.wt - edge.wt;
+	}
+}
+
+class Kruskals {
+	public static void main(String[] args) {
+		int V = 5;
+		ArrayList<ArrayList<ArrayList<Integer>>> adj = new ArrayList<>();
+		int[][] edges = { { 0, 1, 2 }, { 0, 2, 1 }, { 1, 2, 1 }, { 2, 3, 2 }, { 3, 4, 1 }, { 4, 2, 2 } };
+		for (int i = 0; i < V; i++) {
+			adj.add(new ArrayList<ArrayList<Integer>>());
+		}
+		for (int i = 0; i < 6; i++) {
+			int w = edges[i][0];
+			int u = edges[i][1];
+			int v = edges[i][2];
+			ArrayList<Integer> temp1 = new ArrayList<Integer>();
+			ArrayList<Integer> temp2 = new ArrayList<Integer>();
+			temp1.add(v);
+			temp1.add(w);
+			temp2.add(u);
+			temp2.add(w);
+			adj.get(u).add(temp1);
+			adj.get(v).add(temp2);
+		}
+		Kruskals obj = new Kruskals();
+		int mstWt = obj.spanningTree(V, adj);
+		System.out.println("The sum of all the edge weights: " + mstWt);
+
+	}
+
+	static int spanningTree(int V, ArrayList<ArrayList<ArrayList<Integer>>> adj) {
+		List<Edge> es = new ArrayList<Edge>();
+		for(int i=0;i<V;i++) {
+			for(int j=0;j<adj.get(i).size();j++) {
+				int adjNode = adj.get(i).get(j).get(0);
+				int wt = adj.get(i).get(j).get(1);
+				int node = i;
+				Edge temp = new Edge(node,adjNode, wt);
+				es.add(temp);
+			}
+		}
+		DisjointGraph ds = new DisjointGraph(V);
+		Collections.sort(es);
+		int minWt =0;
+		for(int i=0;i<es.size();i++) {
+			int wt = es.get(i).wt;
+			int src = es.get(i).src;
+			int dest = es.get(i).dest;
+			if(ds.findUpar(src)!=ds.findUpar(dest)) {
+				minWt += wt;
+				ds.findUnionBySize(src, dest);
+			}
+			
+		}
+		return minWt;
+	}
+}

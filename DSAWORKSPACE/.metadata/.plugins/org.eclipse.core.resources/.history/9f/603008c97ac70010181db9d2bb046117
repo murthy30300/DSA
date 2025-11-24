@@ -1,0 +1,109 @@
+package com.tcs.roundii;
+import java.util.*;
+import java.io.*;
+
+
+public class Cubemid {
+
+    static class Cell {
+        int l, r, c;
+        Cell(int l, int r, int c) { this.l = l; this.r = r; this.c = c; }
+    }
+
+    static boolean isWalkable(char x) {
+        return x == 'D' || x == 'R' || x == 'L' || x == 'F' || x == 'B';
+    }
+
+    public static void main(String[] args) throws Exception {
+
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        int S = Integer.parseInt(br.readLine().trim());
+
+        char[][][] cube = new char[S][S][S];
+        for (int l = 0; l < S; l++)
+            for (int r = 0; r < S; r++)
+                cube[l][r] = br.readLine().trim().toCharArray();
+
+        String[] s = br.readLine().trim().split(" ");
+        int sl = Integer.parseInt(s[0]), sr = Integer.parseInt(s[1]), sc = Integer.parseInt(s[2]);
+
+        String[] g = br.readLine().trim().split(" ");
+        int gl = Integer.parseInt(g[0]), gr = Integer.parseInt(g[1]), gc = Integer.parseInt(g[2]);
+
+        boolean[][][] vis = new boolean[S][S][S];
+        int[][][] dist = new int[S][S][S];
+        for (int[][] layer : dist) for (int[] row : layer) Arrays.fill(row, -1);
+
+        Queue<Cell> q = new ArrayDeque<>();
+        q.add(new Cell(sl, sr, sc));
+        vis[sl][sr][sc] = true;
+        dist[sl][sr][sc] = 0;
+
+        int[][] move2D = {{1,0}, {-1,0}, {0,1}, {0,-1}};
+
+        while (!q.isEmpty()) {
+            Cell cur = q.poll();
+            int l = cur.l, r = cur.r, c = cur.c;
+
+            if (l == gl && r == gr && c == gc) {
+                System.out.println(dist[l][r][c]);
+                return;
+            }
+
+            char type = cube[l][r][c];
+            
+            // Within-layer moves (for D, R, L, F, B - all walkable types)
+            for (int[] d : move2D) {
+                int nr = r + d[0], nc = c + d[1];
+                if (nr >= 0 && nr < S && nc >= 0 && nc < S) {
+                    if (!vis[l][nr][nc] && isWalkable(cube[l][nr][nc])) {
+                        vis[l][nr][nc] = true;
+                        dist[l][nr][nc] = dist[l][r][c] + 1;
+                        q.add(new Cell(l, nr, nc));
+                    }
+                }
+            }
+
+            // Special moves based on chamber type
+            switch (type) {
+                case 'R':
+                    // Move to upper-level right floor
+                    if (l + 1 < S && c + 1 < S && !vis[l + 1][r][c + 1] && isWalkable(cube[l + 1][r][c + 1])) {
+                        vis[l + 1][r][c + 1] = true;
+                        dist[l + 1][r][c + 1] = dist[l][r][c] + 1;
+                        q.add(new Cell(l + 1, r, c + 1));
+                    }
+                    break;
+                    
+                case 'L':
+                    // Move to upper-level left floor  
+                    if (l + 1 < S && c - 1 >= 0 && !vis[l + 1][r][c - 1] && isWalkable(cube[l + 1][r][c - 1])) {
+                        vis[l + 1][r][c - 1] = true;
+                        dist[l + 1][r][c - 1] = dist[l][r][c] + 1;
+                        q.add(new Cell(l + 1, r, c - 1));
+                    }
+                    break;
+                    
+                case 'F':
+                    // Move to next layer down floor
+                    if (l + 1 < S && !vis[l + 1][r][c] && isWalkable(cube[l + 1][r][c])) {
+                        vis[l + 1][r][c] = true;
+                        dist[l + 1][r][c] = dist[l][r][c] + 1;
+                        q.add(new Cell(l + 1, r, c));
+                    }
+                    break;
+                    
+                case 'B':
+                    // Move to next layer upper floor
+                    if (l - 1 >= 0 && !vis[l - 1][r][c] && isWalkable(cube[l - 1][r][c])) {
+                        vis[l - 1][r][c] = true;
+                        dist[l - 1][r][c] = dist[l][r][c] + 1;
+                        q.add(new Cell(l - 1, r, c));
+                    }
+                    break;
+            }
+        }
+
+        System.out.println(-1);
+    }
+}

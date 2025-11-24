@@ -1,0 +1,232 @@
+package com.tcs.roundii
+import java.util.*;
+import java.io.*;
+
+public class TitlesBars {
+    static class Bar {
+        int x1, y1, x2, y2;
+        int type; // 0 for '/', 1 for '\'
+        int midX, midY;
+        
+        Bar(int x1, int y1, int x2, int y2) {
+            this.x1 = x1;
+            this.y1 = y1;
+            this.x2 = x2;
+            this.y2 = y2;
+            
+            if (x1 + y1 == x2 + y2) {
+                type = 0; // '/'
+            } else {
+                type = 1; // '\'
+            }
+            
+            midX = (x1 + x2) / 2;
+            midY = (y1 + y2) / 2;
+        }
+        
+        boolean contains(int x, int y) {
+            if (type == 0) {
+                return (x + y == x1 + y1) && 
+                       x >= Math.min(x1, x2) && x <= Math.max(x1, x2) &&
+                       y >= Math.min(y1, y2) && y <= Math.max(y1, y2);
+            } else {
+                return (x - y == x1 - y1) && 
+                       x >= Math.min(x1, x2) && x <= Math.max(x1, x2) &&
+                       y >= Math.min(y1, y2) && y <= Math.max(y1, y2);
+            }
+        }
+        
+        // Get both endpoints of the bar
+        Point[] getEndpoints() {
+            return new Point[]{new Point(x1, y1), new Point(x2, y2)};
+        }
+        
+        // Get tilted endpoints (90 degree rotation around midpoint)
+        Point[] getTiltedEndpoints() {
+            // Rotate endpoints 90 degrees around midpoint
+            int nx1 = midX - (y1 - midY);
+            int ny1 = midY + (x1 - midX);
+            int nx2 = midX - (y2 - midY);
+            int ny2 = midY + (x2 - midX);
+            
+            return new Point[]{new Point(nx1, ny1), new Point(nx2, ny2)};
+        }
+        
+        // Get anti-clockwise tilted endpoints
+        Point[] getAntiClockwiseEndpoints() {
+            // Rotate endpoints 90 degrees anti-clockwise around midpoint
+            int nx1 = midX + (y1 - midY);
+            int ny1 = midY - (x1 - midX);
+            int nx2 = midX + (y2 - midY);
+            int ny2 = midY - (x2 - midX);
+            
+            return new Point[]{new Point(nx1, ny1), new Point(nx2, ny2)};
+        }
+    }
+    
+    static class Point {
+        int x, y;
+        Point(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+        
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Point point = (Point) o;
+            return x == point.x && y == point.y;
+        }
+        
+        @Override
+        public int hashCode() {
+            return Objects.hash(x, y);
+        }
+        
+        @Override
+        public String toString() {
+            return x + " " + y;
+        }
+    }
+    
+    static class State {
+        Point pos;
+        long tiltedMask; // Bitmask to track which bars have been tilted
+        
+        State(Point pos, long tiltedMask) {
+            this.pos = pos;
+            this.tiltedMask = tiltedMask;
+        }
+        
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            State state = (State) o;
+            return tiltedMask == state.tiltedMask && Objects.equals(pos, state.pos);
+        }
+        
+        @Override
+        public int hashCode() {
+            return Objects.hash(pos, tiltedMask);
+        }
+    }
+    
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        
+        int N = sc.nextInt();
+        List<Bar> bars = new ArrayList<>();
+        
+        for (int i = 0; i < N; i++) {
+            int x1 = sc.nextInt();
+            int y1 = sc.nextInt();
+            int x2 = sc.nextInt();
+            int y2 = sc.nextInt();
+            bars.add(new Bar(x1, y1, x2, y2));
+        }
+        
+        int startX = sc.nextInt();
+        int startY = sc.nextInt();
+        
+        Set<String> groundPoints = new TreeSet<>();
+        Queue<State> queue = new LinkedList<>();
+        Set<State> visited = new HashSet<>();
+        
+        queue.offer(new State(new Point(startX, startY), 0L));
+        visited.add(new State(new Point(startX, startY), 0L));
+        
+        while (!queue.isEmpty()) {
+            State current = queue.poll();
+            Point pos = current.pos;
+            
+            // If we've reached the ground, record the position
+            if (pos.y == 0) {
+                groundPoints.add(pos.x + " 0");
+                continue;
+            }
+            
+            // Find the next bar the ball hits by moving straight down
+            Bar hitBar = null;
+            Point hitPoint = null;
+            int hitBarIndex = -1;
+            
+            // Check for bars at current x position from current y down to 0
+            for (int y = pos.y - 1; y >= 0 && hitBar == null; y--) {
+                for (int i = 0; i < bars.size(); i++) {
+                    Bar bar = bars.get(i);
+                    if (bar.contains(pos.x, y)) {
+                        hitBar = bar;
+                        hitPoint = new Point(pos.x, y);
+                        hitBarIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (hitBar == null) {
+                // No bar hit, ball reaches ground directly
+                groundPoints.add(pos.x + " 0");
+            } else {
+                boolean isTilted = ((current.tiltedMask >> hitBarIndex) & 1) == 1;
+                
+                if (!isTilted) {
+                    // Bar not tilted yet - we have three choices:
+                    
+                    // 1. Don't tilt, slide to either endpoint
+                    Point[] endpoints = hitBar.getEndpoints();
+                    for (Point endpoint : endpoints) {
+                        State newState = new State(endpoint, current.tiltedMask);
+                        if (!visited.contains(newState)) {
+                            visited.add(newState);
+                            queue.offer(newState);
+                        }
+                    }
+                    
+                    // 2. Tilt clockwise
+                    Point[] tiltedEndpoints = hitBar.getTiltedEndpoints();
+                    for (Point endpoint : tiltedEndpoints) {
+                        State newState = new State(endpoint, current.tiltedMask | (1L << hitBarIndex));
+                        if (!visited.contains(newState)) {
+                            visited.add(newState);
+                            queue.offer(newState);
+                        }
+                    }
+                    
+                    // 3. Tilt anti-clockwise  
+                    Point[] antiClockEndpoints = hitBar.getAntiClockwiseEndpoints();
+                    for (Point endpoint : antiClockEndpoints) {
+                        State newState = new State(endpoint, current.tiltedMask | (1L << hitBarIndex));
+                        if (!visited.contains(newState)) {
+                            visited.add(newState);
+                            queue.offer(newState);
+                        }
+                    }
+                } else {
+                    // Bar already tilted - can only use tilted orientation
+                    Point[] tiltedEndpoints = hitBar.getTiltedEndpoints();
+                    for (Point endpoint : tiltedEndpoints) {
+                        State newState = new State(endpoint, current.tiltedMask);
+                        if (!visited.contains(newState)) {
+                            visited.add(newState);
+                            queue.offer(newState);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Output results in sorted order
+        List<String> sortedResults = new ArrayList<>(groundPoints);
+        sortedResults.sort((a, b) -> {
+            int x1 = Integer.parseInt(a.split(" ")[0]);
+            int x2 = Integer.parseInt(b.split(" ")[0]);
+            return Integer.compare(x1, x2);
+        });
+        
+        for (String point : sortedResults) {
+            System.out.println(point);
+        }
+    }
+}

@@ -1,0 +1,128 @@
+package com.tcs.roundii;
+import java.io.*;
+import java.util.*;
+
+
+public class Cubemid {
+
+    static class Cell {
+        int l, r, c;
+        Cell(int l, int r, int c) {
+            this.l = l;
+            this.r = r;   // correct
+            this.c = c;
+        }
+    }
+
+    static boolean walkable(char x) {
+        return x != 'E';
+    }
+
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+        int S = Integer.parseInt(br.readLine().trim());
+        char[][][] cube = new char[S][S][S];
+
+        // read cube
+        for (int l = 0; l < S; l++) {
+            for (int r = 0; r < S; r++) {
+                String row = br.readLine().trim();
+                for (int c = 0; c < S; c++) {
+                    cube[l][r][c] = row.charAt(c);
+                }
+            }
+        }
+
+        // start
+        String[] s = br.readLine().trim().split(" ");
+        int sl = Integer.parseInt(s[0]), sr = Integer.parseInt(s[1]), sc = Integer.parseInt(s[2]);
+
+        // goal
+        String[] g = br.readLine().trim().split(" ");
+        int gl = Integer.parseInt(g[0]), gr = Integer.parseInt(g[1]), gc = Integer.parseInt(g[2]);
+
+        boolean[][][] vis = new boolean[S][S][S];
+        int[][][] dist = new int[S][S][S];
+
+        for (int i = 0; i < S; i++)
+            for (int j = 0; j < S; j++)
+                Arrays.fill(dist[i][j], -1);
+
+        Queue<Cell> q = new ArrayDeque<>();
+        q.add(new Cell(sl, sr, sc));
+        vis[sl][sr][sc] = true;
+        dist[sl][sr][sc] = 0;
+
+        // same-layer movement (only from D)
+        int[][] dirs = {
+            {-1, 0}, {1, 0}, {0, -1}, {0, 1}
+        };
+
+        while (!q.isEmpty()) {
+            Cell cur = q.poll();
+            int l = cur.l, r = cur.r, c = cur.c;
+
+            if (l == gl && r == gr && c == gc) {
+                System.out.println(dist[l][r][c]);
+                return;
+            }
+
+            char type = cube[l][r][c];
+
+            // ---- SAME LAYER WALKING ONLY IF D ----
+            if (type == 'D') {
+                for (int[] d : dirs) {
+                    int nr = r + d[0], nc = c + d[1];
+                    if (nr >= 0 && nr < S && nc >= 0 && nc < S) {
+                        if (!vis[l][nr][nc] && walkable(cube[l][nr][nc])) {
+                            vis[l][nr][nc] = true;
+                            dist[l][nr][nc] = dist[l][r][c] + 1;
+                            q.add(new Cell(l, nr, nc));
+                        }
+                    }
+                }
+            }
+
+            // ---- SPECIAL MOVES BASED ON SLOPE TYPE ----
+
+            switch (type) {
+
+                case 'F':   // move down a layer
+                    if (l + 1 < S && walkable(cube[l + 1][r][c]) && !vis[l+1][r][c]) {
+                        vis[l+1][r][c] = true;
+                        dist[l+1][r][c] = dist[l][r][c] + 1;
+                        q.add(new Cell(l+1, r, c));
+                    }
+                    break;
+
+                case 'B':   // move up a layer
+                    if (l - 1 >= 0 && walkable(cube[l - 1][r][c]) && !vis[l-1][r][c]) {
+                        vis[l-1][r][c] = true;
+                        dist[l-1][r][c] = dist[l][r][c] + 1;
+                        q.add(new Cell(l-1, r, c));
+                    }
+                    break;
+
+                case 'R':   // diagonal up-right
+                    if (l + 1 < S && c + 1 < S && walkable(cube[l + 1][r][c + 1]) && !vis[l+1][r][c+1]) {
+                        vis[l+1][r][c+1] = true;
+                        dist[l+1][r][c+1] = dist[l][r][c] + 1;
+                        q.add(new Cell(l+1, r, c+1));
+                    }
+                    break;
+
+                case 'L':   // diagonal up-left
+                    if (l + 1 < S && c - 1 >= 0 && walkable(cube[l + 1][r][c - 1]) && !vis[l+1][r][c-1]) {
+                        vis[l+1][r][c-1] = true;
+                        dist[l+1][r][c-1] = dist[l][r][c] + 1;
+                        q.add(new Cell(l+1, r, c-1));
+                    }
+                    break;
+
+            }
+        }
+
+        System.out.println(-1);
+    }
+}

@@ -1,0 +1,39 @@
+package com.medium;
+import java.util.*;
+public class RottenOranges {
+	static class Pair{
+		int first,second,third;
+		Pair(int first,int second, int third){
+			this.first = first;
+			this.second = second;
+			this.third =third;
+		}
+	}
+	public static int orangesRotting(int[][] arr) {
+		int min_time=0;
+		if(arr.length == 0)return 0;
+		int m = arr.length;
+		int n = arr[0].length;
+		Queue<Pair> q = new LinkedList<>();
+		int[][] vis= new int[m][n];
+		for(int i=0;i<m;i++) {
+			for(int j=0;j<n;j++) {
+				if(arr[i][j]==2) {
+					q.add(new Pair(i,j,0));
+				}
+				else {
+					vis[i][j] = 0;
+				}
+				if(arr[i][j]==1) {
+					fresh++;
+				}
+			}
+		}
+		return min_time;
+	}
+	public static void main(String[] args) {
+		 int arr[][]={ {2,1,1} , {1,1,0} , {0,1,1} };
+	     int rotting = orangesRotting(arr);
+	     System.out.println("Minimum Number of Minutes Required "+rotting);
+	}
+}

@@ -1,0 +1,201 @@
+package com.tcs.roundii;
+
+public class Rubiverse {
+
+}
+import java.util.*;
+
+public class Main {
+
+    static class Vec {
+        int x, y, z;
+        Vec(int x, int y, int z) { this.x=x; this.y=y; this.z=z; }
+
+        Vec add(Vec o) { return new Vec(x+o.x, y+o.y, z+o.z); }
+        Vec scale(int s) { return new Vec(x*s, y*s, z*s); }
+
+        @Override
+        public boolean equals(Object o){
+            if(!(o instanceof Vec)) return false;
+            Vec v=(Vec)o;
+            return x==v.x && y==v.y && z==v.z;
+        }
+        @Override
+        public int hashCode(){ return Objects.hash(x,y,z); }
+        public String toString(){ return "("+x+","+y+","+z+")"; }
+    }
+
+    // rotates vector v around axis a by ±90 degrees
+    static Vec rotate90(Vec v, Vec a, int sign){
+        int dot = a.x*v.x + a.y*v.y + a.z*v.z;
+        Vec part1 = new Vec(a.x*dot, a.y*dot, a.z*dot);
+        Vec cross = new Vec(a.y*v.z - a.z*v.y, a.z*v.x - a.x*v.z, a.x*v.y - a.y*v.x);
+        return new Vec(part1.x + sign*cross.x,
+                       part1.y + sign*cross.y,
+                       part1.z + sign*cross.z);
+    }
+
+    public static void main(String[] args){
+        Scanner sc = new Scanner(System.in);
+
+        String[] grid = new String[4];
+        for(int i=0;i<4;i++){
+            grid[i] = sc.nextLine().replace(" ","");
+            if(grid[i].length() < 4)
+                grid[i] = String.format("%-4s", grid[i]).replace(' ','.');
+        }
+
+        String allchars = sc.nextLine().trim();
+        String corner = sc.nextLine().trim();
+
+        Map<Character, int[]> pos = new LinkedHashMap<>();
+        List<Character> order = new ArrayList<>();
+
+        // Scan faces in order
+        for(int r=0;r<4;r++){
+            for(int c=0;c<4;c++){
+                char ch = grid[r].charAt(c);
+                if(ch!='.' && !pos.containsKey(ch)){
+                    pos.put(ch,new int[]{r,c});
+                    order.add(ch);
+                }
+            }
+        }
+
+        // Map characters to their face string
+        Map<Character,String> faceChars = new HashMap<>();
+        for(int i=0;i<order.size();i++){
+            char f = order.get(i);
+            faceChars.put(f, allchars.substring(4*i,4*i+4));
+        }
+
+        // Build adjacency
+        Map<Character,Map<String,Character>> adj = new HashMap<>();
+        for(char f:order){
+            adj.put(f,new HashMap<>());
+            int[] p = pos.get(f);
+            int r=p[0], c=p[1];
+            if(r>0 && grid[r-1].charAt(c)!='.') adj.get(f).put("U",grid[r-1].charAt(c));
+            if(r<3 && grid[r+1].charAt(c)!='.') adj.get(f).put("D",grid[r+1].charAt(c));
+            if(c>0 && grid[r].charAt(c-1)!='.') adj.get(f).put("L",grid[r].charAt(c-1));
+            if(c<3 && grid[r].charAt(c+1)!='.') adj.get(f).put("R",grid[r].charAt(c+1));
+        }
+
+        // Orientation storage: face -> (normal, u, v)
+        class Orientation {
+            Vec n,u,v;
+            Orientation(Vec n, Vec u, Vec v){
+                this.n=n;this.u=u;this.v=v;
+            }
+        }
+
+        Map<Character,Orientation> orient = new HashMap<>();
+        char start = order.get(0);
+
+        // initial orientation
+        orient.put(start, new Orientation(
+                new Vec(0,0,1),  // normal
+                new Vec(1,0,0),  // right
+                new Vec(0,1,0)   // up
+        ));
+
+        Queue<Character> q = new LinkedList<>();
+        q.add(start);
+
+        while(!q.isEmpty()){
+            char f = q.poll();
+            Orientation A = orient.get(f);
+            int[] p = pos.get(f);
+
+            if(adj.get(f).containsKey("R")){
+                char g = adj.get(f).get("R");
+                if(!orient.containsKey(g)){
+                    Vec nB = rotate90(A.n, A.v, +1);
+                    Vec uB = rotate90(A.u, A.v, +1);
+                    Vec vB = rotate90(A.v, A.v, +1);
+                    orient.put(g,new Orientation(nB,uB,vB));
+                    q.add(g);
+                }
+            }
+            if(adj.get(f).containsKey("L")){
+                char g = adj.get(f).get("L");
+                if(!orient.containsKey(g)){
+                    Vec nB = rotate90(A.n, A.v, -1);
+                    Vec uB = rotate90(A.u, A.v, -1);
+                    Vec vB = rotate90(A.v, A.v, -1);
+                    orient.put(g,new Orientation(nB,uB,vB));
+                    q.add(g);
+                }
+            }
+            if(adj.get(f).containsKey("D")){
+                char g = adj.get(f).get("D");
+                if(!orient.containsKey(g)){
+                    Vec nB = rotate90(A.n, A.u, +1);
+                    Vec uB = rotate90(A.u, A.u, +1);
+                    Vec vB = rotate90(A.v, A.u, +1);
+                    orient.put(g,new Orientation(nB,uB,vB));
+                    q.add(g);
+                }
+            }
+            if(adj.get(f).containsKey("U")){
+                char g = adj.get(f).get("U");
+                if(!orient.containsKey(g)){
+                    Vec nB = rotate90(A.n, A.u, -1);
+                    Vec uB = rotate90(A.u, A.u, -1);
+                    Vec vB = rotate90(A.v, A.u, -1);
+                    orient.put(g,new Orientation(nB,uB,vB));
+                    q.add(g);
+                }
+            }
+        }
+
+        // Map each face to set of its 4 vertices
+        Map<Character, Map<String,Vec>> faceCorner = new HashMap<>();
+        Map<Character, Set<Vec>> faceVerts = new HashMap<>();
+
+        for(char f : order){
+            Orientation o = orient.get(f);
+            Map<String,Vec> cm = new HashMap<>();
+            Set<Vec> vs = new HashSet<>();
+
+            for(int rr=0; rr<2; rr++){
+                for(int cc=0; cc<2; cc++){
+                    int mul_u = (cc==0? -1: 1);
+                    int mul_v = (rr==0?  1: -1);
+                    Vec v = o.n.add(o.u.scale(mul_u)).add(o.v.scale(mul_v));
+                    cm.put(rr+""+cc,v);
+                    vs.add(v);
+                }
+            }
+            faceCorner.put(f,cm);
+            faceVerts.put(f,vs);
+        }
+
+        char a = corner.charAt(0);
+        char b = corner.charAt(1);
+        char c = corner.charAt(2);
+
+        Set<Vec> common = new HashSet<>(faceVerts.get(a));
+        common.retainAll(faceVerts.get(b));
+        common.retainAll(faceVerts.get(c));
+
+        Vec target = common.iterator().next();
+
+        StringBuilder ans = new StringBuilder();
+        for(char f : new char[]{a,b,c}){
+            String chars = faceChars.get(f);
+            Map<String,Vec> cm = faceCorner.get(f);
+            int index=-1;
+            for(Map.Entry<String,Vec> e:cm.entrySet()){
+                if(e.getValue().equals(target)){
+                    int rr = e.getKey().charAt(0)-'0';
+                    int cc = e.getKey().charAt(1)-'0';
+                    index = rr*2 + cc;
+                }
+            }
+            ans.append(chars.charAt(index));
+        }
+
+        System.out.println(ans.toString());
+    }
+}

@@ -1,0 +1,260 @@
+package com.tcs.codevita;
+import java.util.*;
+import java.util.stream.*;
+import java.math.BigInteger;
+
+interface DigitConverter {
+    int convert(String[] segments);
+}
+
+class SevenSegmentConverter implements DigitConverter {
+    private static final Map<String, Integer> digitMap = createDigitMap();
+    
+    private static Map<String, Integer> createDigitMap() {
+        Map<String, Integer> map = new HashMap<>();
+        map.put(" _ | ||_|", 0);
+        map.put("     |  |", 1);
+        map.put(" _  _||_ ", 2);
+        map.put(" _  _| _|", 3);
+        map.put("   |_|  |", 4);
+        map.put(" _ |_  _|", 5);
+        map.put(" _ |_ |_|", 6);
+        map.put(" _   |  |", 7);
+        map.put(" _ |_||_|", 8);
+        map.put(" _ |_| _|", 9);
+        return map;
+    }
+    
+    @Override
+    public int convert(String[] segments) {
+        String key = segments[0] + segments[1] + segments[2];
+        return digitMap.getOrDefault(key, -1);
+    }
+}
+
+class ToggleOperation {
+    private final DigitConverter converter;
+    
+    public ToggleOperation(DigitConverter converter) {
+        this.converter = converter;
+    }
+    
+    public List<Integer> getPossibleDigits(String[] currentSegments) {
+        Set<Integer> possible = new HashSet<>();
+        String[] original = currentSegments.clone();
+        
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                char[] lineChars = currentSegments[i].toCharArray();
+                char originalChar = lineChars[j];
+                
+                for (char c : new char[]{' ', '_', '|'}) {
+                    if (c != originalChar) {
+                        lineChars[j] = c;
+                        currentSegments[i] = new String(lineChars);
+                        int digit = converter.convert(currentSegments);
+                        if (digit != -1) {
+                            possible.add(digit);
+                        }
+                    }
+                }
+                currentSegments[i] = original[i];
+            }
+        }
+        return possible.stream().sorted().collect(Collectors.toList());
+    }
+    
+    public int findBestToggle(String[] currentSegments, int currentDigit) {
+        List<Integer> possible = getPossibleDigits(currentSegments);
+        for (int digit : possible) {
+            if (digit < currentDigit) {
+                return digit;
+            }
+        }
+        return currentDigit;
+    }
+}
+
+class AnagramFinder {
+    public BigInteger findNextAnagram(BigInteger number) {
+        String numStr = number.toString();
+        char[] digits = numStr.toCharArray();
+        int n = digits.length;
+        
+        int i = n - 2;
+        while (i >= 0 && digits[i] >= digits[i + 1]) {
+            i--;
+        }
+        
+        if (i < 0) return number;
+        
+        int j = n - 1;
+        while (digits[j] <= digits[i]) {
+            j--;
+        }
+        
+        swap(digits, i, j);
+        reverse(digits, i + 1, n - 1);
+        
+        return new BigInteger(new String(digits));
+    }
+    
+    private void swap(char[] arr, int i, int j) {
+        char temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+    
+    private void reverse(char[] arr, int start, int end) {
+        while (start < end) {
+            swap(arr, start++, end--);
+        }
+    }
+}
+
+public class EnthusiasticVijay {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        
+        String[] lines = new String[3];
+        for (int i = 0; i < 3; i++) {
+            lines[i] = scanner.nextLine();
+        }
+        int k = scanner.nextInt();
+        
+        DigitConverter converter = new SevenSegmentConverter();
+        ToggleOperation toggleOp = new ToggleOperation(converter);
+        AnagramFinder anagramFinder = new AnagramFinder();
+        
+        // Parse the 7-segment digits correctly
+        List<Integer> originalDigits = parseSevenSegmentDigits(lines);
+        
+        if (originalDigits.isEmpty()) {
+            System.out.println(0);
+            return;
+        }
+        
+        BigInteger originalNumber = digitsToNumber(originalDigits);
+        List<Integer> modifiedDigits = new ArrayList<>(originalDigits);
+        
+        // Create segment representations for each digit
+        List<String[]> segmentList = createSegmentList(lines, originalDigits.size());
+        
+        int togglesPerformed = 0;
+        for (int toggle = 0; toggle < k && togglesPerformed < k; toggle++) {
+            int bestIndex = -1;
+            int bestNewDigit = -1;
+            int currentBestDiff = Integer.MAX_VALUE;
+            
+            for (int i = 0; i < modifiedDigits.size(); i++) {
+                String[] segments = segmentList.get(i);
+                int currentDigit = modifiedDigits.get(i);
+                int newDigit = toggleOp.findBestToggle(segments, currentDigit);
+                
+                if (newDigit < currentDigit) {
+                    int diff = currentDigit - newDigit;
+                    if (diff < currentBestDiff) {
+                        currentBestDiff = diff;
+                        bestIndex = i;
+                        bestNewDigit = newDigit;
+                    } else if (diff == currentBestDiff && (bestIndex == -1 || i < bestIndex)) {
+                        bestIndex = i;
+                        bestNewDigit = newDigit;
+                    }
+                }
+            }
+            
+            if (bestIndex != -1) {
+                modifiedDigits.set(bestIndex, bestNewDigit);
+                togglesPerformed++;
+            } else {
+                break;
+            }
+        }
+        
+        BigInteger modifiedNumber = digitsToNumber(modifiedDigits);
+        BigInteger nextAnagram = anagramFinder.findNextAnagram(modifiedNumber);
+        
+        BigInteger difference = nextAnagram.subtract(originalNumber).abs();
+        System.out.println(difference);
+    }
+    
+    private static List<Integer> parseSevenSegmentDigits(String[] lines) {
+        List<Integer> digits = new ArrayList<>();
+        int digitCount = (lines[0].length() + 1) / 4; // Each digit takes 3 chars + 1 space
+        
+        for (int i = 0; i < digitCount; i++) {
+            int startPos = i * 4;
+            String[] segments = new String[3];
+            
+            for (int j = 0; j < 3; j++) {
+                if (startPos + 3 <= lines[j].length()) {
+                    segments[j] = lines[j].substring(startPos, startPos + 3);
+                } else {
+                    // Pad with spaces if needed
+                    String segment = lines[j].substring(startPos);
+                    while (segment.length() < 3) {
+                        segment += " ";
+                    }
+                    segments[j] = segment;
+                }
+            }
+            
+            // Convert to digit
+            String key = segments[0] + segments[1] + segments[2];
+            Map<String, Integer> digitMap = new HashMap<>();
+            digitMap.put(" _ | ||_|", 0);
+            digitMap.put("     |  |", 1);
+            digitMap.put(" _  _||_ ", 2);
+            digitMap.put(" _  _| _|", 3);
+            digitMap.put("   |_|  |", 4);
+            digitMap.put(" _ |_  _|", 5);
+            digitMap.put(" _ |_ |_|", 6);
+            digitMap.put(" _   |  |", 7);
+            digitMap.put(" _ |_||_|", 8);
+            digitMap.put(" _ |_| _|", 9);
+            
+            Integer digit = digitMap.get(key);
+            if (digit != null) {
+                digits.add(digit);
+            }
+        }
+        
+        return digits;
+    }
+    
+    private static List<String[]> createSegmentList(String[] lines, int digitCount) {
+        List<String[]> segmentList = new ArrayList<>();
+        
+        for (int i = 0; i < digitCount; i++) {
+            int startPos = i * 4;
+            String[] segments = new String[3];
+            
+            for (int j = 0; j < 3; j++) {
+                if (startPos + 3 <= lines[j].length()) {
+                    segments[j] = lines[j].substring(startPos, startPos + 3);
+                } else {
+                    String segment = lines[j].substring(startPos);
+                    while (segment.length() < 3) {
+                        segment += " ";
+                    }
+                    segments[j] = segment;
+                }
+            }
+            segmentList.add(segments);
+        }
+        
+        return segmentList;
+    }
+    
+    private static BigInteger digitsToNumber(List<Integer> digits) {
+        if (digits.isEmpty()) {
+            return BigInteger.ZERO;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int digit : digits) {
+            sb.append(digit);
+        }
+        return new BigInteger(sb.toString());
+    }
+}

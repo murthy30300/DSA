@@ -1,0 +1,5 @@
+package com.disjointset;
+
+public class Kruskals {
+
+}

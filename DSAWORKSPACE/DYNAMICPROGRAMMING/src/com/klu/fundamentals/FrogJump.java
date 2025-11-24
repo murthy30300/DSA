@@ -1,0 +1,79 @@
+package com.klu.fundamentals;
+
+import java.util.*;
+
+/*
+ * There is a frog on the '1st' step of an 'N' stairs long staircase. 
+ * The frog wants to reach the 'Nth' stair. 'HEIGHT[i]' is the height of the '(i+1)th' stair.
+ * If Frog jumps from 'ith' to 'jth' stair, the energy lost in the jump is given by absolute value of ( HEIGHT[i-1] - HEIGHT[j-1] ). 
+ * If the Frog is on 'ith' staircase, he can jump either to '(i+1)th' stair or to '(i+2)th' stair. 
+ * Your task is to find the minimum total energy used by the frog to reach from '1st' stair to 'Nth' stair.
+
+*/
+public class FrogJump {
+	public static void main(String[] args) {
+		int n = 4;
+		int[] height = { 10, 20, 40, 60 };
+		System.out.println(frogJump(n-1, height));
+		System.out.println("Dynamic Programming");
+		int n1 = 6;
+		int[] h2 = {30,10,60,10,60,50};
+		int[] dp = new int[n1+1];
+		
+		Arrays.fill(dp, -1);
+		System.out.println(frogJumpInDp(n1-1,dp,h2));
+		
+		System.out.println("Tabulation\n__________________");
+		System.out.println(frogJumpInTab2(n1-1,h2,dp));
+		
+	}
+	static int frogJumpInTab2(int n,int[] a,int[] dp) {
+		int prev = 0,prev2=0,cur;
+		for(int i=1;i<=n;i++) {
+			int fs = prev+Math.abs(a[i]-a[i-1]);
+			int ss = Integer.MAX_VALUE;
+			if(i>1)
+			ss = prev2+Math.abs(a[i]-a[i-2]);
+			
+			cur =  Math.min(fs, ss);
+			prev2 = prev;
+			prev = cur;
+		}
+		return dp[n];
+		
+	}
+	static int frogJumpInTab(int n,int[] a,int[] dp) {
+		Arrays.fill(dp, 0);
+		dp[0]=0;
+		for(int i=1;i<=n;i++) {
+			int fs = dp[i-1]+Math.abs(a[i]-a[i-1]);
+			int ss = Integer.MAX_VALUE;
+			if(i>1)
+			ss = dp[i-2]+Math.abs(a[i]-a[i-2]);
+			
+			dp[i] = Math.min(fs, ss);
+		}
+		return dp[n];
+		
+	}
+	static int frogJumpInDp(int n, int dp[],int a[]) {
+		if (n == 0)
+			return 0;
+		if(dp[n]!=-1) return dp[n];
+		int left = frogJump(n - 1, a) + Math.abs(a[n] - a[n - 1]);
+		int right = Integer.MAX_VALUE;
+		if (n > 1)
+			right = frogJump(n - 2, a) + Math.abs(a[n] - a[n - 2]);
+		dp[n] = Math.min(left, right);
+		return dp[n];
+	}
+	static int frogJump(int n, int a[]) {
+		if (n == 0)
+			return 0;
+		int left = frogJump(n - 1, a) + Math.abs(a[n] - a[n - 1]);
+		int right = Integer.MAX_VALUE;
+		if (n > 1)
+			right = frogJump(n - 2, a) + Math.abs(a[n] - a[n - 2]);
+		return Math.min(left, right);
+	}
+}

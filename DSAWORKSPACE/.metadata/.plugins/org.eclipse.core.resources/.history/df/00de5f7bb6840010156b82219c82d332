@@ -1,0 +1,18 @@
+package com.medium;
+
+public class RottenOranges {
+	static class Pair{
+		int first,second,third;
+		Pair(int first,second,thi)
+	}
+	public static int orangesRotting(int[][] arr) {
+		int min_time=0;
+		
+		return min_time;
+	}
+	public static void main(String[] args) {
+		 int arr[][]={ {2,1,1} , {1,1,0} , {0,1,1} };
+	     int rotting = orangesRotting(arr);
+	     System.out.println("Minimum Number of Minutes Required "+rotting);
+	}
+}

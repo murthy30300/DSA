@@ -1,0 +1,134 @@
+package com.tcs.roundii;
+import java.util.*;
+import java.io.*;
+
+public class Cubemid {
+    public static void main(String[] args) throws IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        
+        // Read cube size
+        int S = Integer.parseInt(br.readLine().trim());
+        
+        // Read cube data
+        char[][][] cube = new char[S][S][S];
+        for (int l = 0; l < S; l++) {
+            for (int r = 0; r < S; r++) {
+                String line = br.readLine().trim();
+                for (int c = 0; c < S; c++) {
+                    cube[l][r][c] = line.charAt(c);
+                }
+            }
+        }
+        
+        // Read start position
+        String[] startLine = br.readLine().trim().split(" ");
+        int startL = Integer.parseInt(startLine[0]);
+        int startR = Integer.parseInt(startLine[1]);
+        int startC = Integer.parseInt(startLine[2]);
+        
+        // Read gold position
+        String[] goldLine = br.readLine().trim().split(" ");
+        int goldL = Integer.parseInt(goldLine[0]);
+        int goldR = Integer.parseInt(goldLine[1]);
+        int goldC = Integer.parseInt(goldLine[2]);
+        
+        // Initialize visited and distance arrays
+        boolean[][][] visited = new boolean[S][S][S];
+        int[][][] dist = new int[S][S][S];
+        for (int i = 0; i < S; i++) {
+            for (int j = 0; j < S; j++) {
+                Arrays.fill(dist[i][j], -1);
+            }
+        }
+        
+        // BFS initialization
+        Queue<int[]> queue = new LinkedList<>();
+        queue.offer(new int[]{startL, startR, startC});
+        visited[startL][startR][startC] = true;
+        dist[startL][startR][startC] = 0;
+        
+        // Directions for within-layer moves: up, down, left, right
+        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        
+        // BFS execution
+        while (!queue.isEmpty()) {
+            int[] current = queue.poll();
+            int l = current[0];
+            int r = current[1];
+            int c = current[2];
+            
+            // Check if we reached the gold chamber
+            if (l == goldL && r == goldR && c == goldC) {
+                System.out.println(dist[l][r][c]);
+                return;
+            }
+            
+            // Within-layer moves
+            for (int[] dir : directions) {
+                int nr = r + dir[0];
+                int nc = c + dir[1];
+                
+                if (nr >= 0 && nr < S && nc >= 0 && nc < S) {
+                    if (!visited[l][nr][nc] && cube[l][nr][nc] != 'E') {
+                        visited[l][nr][nc] = true;
+                        dist[l][nr][nc] = dist[l][r][c] + 1;
+                        queue.offer(new int[]{l, nr, nc});
+                    }
+                }
+            }
+            
+            // Special moves based on chamber type
+            char cellType = cube[l][r][c];
+            switch (cellType) {
+                case 'R':
+                    int nlR = l + 1;
+                    int ncR = c + 1;
+                    if (nlR >= 0 && nlR < S && ncR >= 0 && ncR < S) {
+                        if (!visited[nlR][r][ncR] && cube[nlR][r][ncR] != 'E') {
+                            visited[nlR][r][ncR] = true;
+                            dist[nlR][r][ncR] = dist[l][r][c] + 1;
+                            queue.offer(new int[]{nlR, r, ncR});
+                        }
+                    }
+                    break;
+                    
+                case 'L':
+                    int nlL = l + 1;
+                    int ncL = c - 1;
+                    if (nlL >= 0 && nlL < S && ncL >= 0 && ncL < S) {
+                        if (!visited[nlL][r][ncL] && cube[nlL][r][ncL] != 'E') {
+                            visited[nlL][r][ncL] = true;
+                            dist[nlL][r][ncL] = dist[l][r][c] + 1;
+                            queue.offer(new int[]{nlL, r, ncL});
+                        }
+                    }
+                    break;
+                    
+                case 'F':
+                    int nlF = l + 1;
+                    if (nlF >= 0 && nlF < S) {
+                        if (!visited[nlF][r][c] && cube[nlF][r][c] != 'E') {
+                            visited[nlF][r][c] = true;
+                            dist[nlF][r][c] = dist[l][r][c] + 1;
+                            queue.offer(new int[]{nlF, r, c});
+                        }
+                    }
+                    break;
+                    
+                case 'B':
+                    int nlB = l - 1;
+                    if (nlB >= 0 && nlB < S) {
+                        if (!visited[nlB][r][c] && cube[nlB][r][c] != 'E') {
+                            visited[nlB][r][c] = true;
+                            dist[nlB][r][c] = dist[l][r][c] + 1;
+                            queue.offer(new int[]{nlB, r, c});
+                        }
+                    }
+                    break;
+            }
+        }
+        
+        // If gold chamber is unreachable
+        System.out.println(-1);
+    }
+}

@@ -1,0 +1,14 @@
+package com.disjointset;
+class Edge implements Comparable<Edge>{
+
+	@Override
+	public int compareTo(Edge o) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	
+	
+}
+class Kruskals {
+
+}

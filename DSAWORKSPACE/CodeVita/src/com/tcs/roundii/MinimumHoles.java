@@ -1,0 +1,232 @@
+package com.tcs.roundii;
+import java.io.*;
+import java.util.*;
+
+public class MinimumHoles {
+
+    static class FastScanner {
+        BufferedReader br;
+        StringTokenizer st;
+        FastScanner(InputStream is) { br = new BufferedReader(new InputStreamReader(is)); }
+        String next() throws IOException {
+            while (st == null || !st.hasMoreElements()) st = new StringTokenizer(br.readLine());
+            return st.nextToken();
+        }
+        int nextInt() throws IOException { return Integer.parseInt(next()); }
+    }
+
+    // interval cover check
+    static boolean coveredBy(List<int[]> intervals, int p) {
+        if (intervals == null) return false;
+        for (int[] seg : intervals) if (p >= seg[0] && p <= seg[1]) return true;
+        return false;
+    }
+
+    public static void main(String[] args) throws Exception {
+        FastScanner fs = new FastScanner(System.in);
+
+        int n = fs.nextInt();  // width (x)
+        int m = fs.nextInt();  // height (y)
+
+        int N = fs.nextInt();
+
+        List<int[]> vertical = new ArrayList<>();
+        List<int[]> horizontal = new ArrayList<>();
+
+        // for endpoint validation
+        Map<Integer,List<int[]>> HAtY = new HashMap<>(); // y -> list of [x1,x2]
+        Map<Integer,List<int[]>> VAtX = new HashMap<>(); // x -> list of [y1,y2]
+
+        TreeSet<Integer> xsSet = new TreeSet<>();
+        TreeSet<Integer> ysSet = new TreeSet<>();
+        xsSet.add(0); xsSet.add(n);
+        ysSet.add(0); ysSet.add(m);
+
+        for (int i = 0; i < N; i++) {
+            int x1 = fs.nextInt(), y1 = fs.nextInt(), x2 = fs.nextInt(), y2 = fs.nextInt();
+            if (!((x1 == x2) ^ (y1 == y2))) {
+                System.out.println("Invalid"); return;
+            }
+            if (x1 < 0 || x1 > n || x2 < 0 || x2 > n || y1 < 0 || y1 > m || y2 < 0 || y2 > m) {
+                System.out.println("Invalid"); return;
+            }
+
+            if (x1 == x2) { // vertical
+                int x = x1;
+                int a = Math.min(y1, y2), b = Math.max(y1, y2);
+                vertical.add(new int[]{x, a, b});
+                xsSet.add(x); ysSet.add(a); ysSet.add(b);
+                VAtX.computeIfAbsent(x, k -> new ArrayList<>()).add(new int[]{a, b});
+            } else { // horizontal
+                int y = y1;
+                int a = Math.min(x1, x2), b = Math.max(x1, x2);
+                horizontal.add(new int[]{y, a, b});
+                ysSet.add(y); xsSet.add(a); xsSet.add(b);
+                HAtY.computeIfAbsent(y, k -> new ArrayList<>()).add(new int[]{a, b});
+            }
+        }
+
+        // --- NEW: endpoint validity check (no dangling ends inside the box) ---
+        for (int[] v : vertical) {
+            int x = v[0], a = v[1], b = v[2];
+            // bottom endpoint (x,a)
+            if (a != 0 && a != m && !coveredBy(HAtY.get(a), x)) { System.out.println("Invalid"); return; }
+            // top endpoint (x,b)
+            if (b != 0 && b != m && !coveredBy(HAtY.get(b), x)) { System.out.println("Invalid"); return; }
+        }
+        for (int[] h : horizontal) {
+            int y = h[0], a = h[1], b = h[2];
+            // left endpoint (a,y)
+            if (a != 0 && a != n && !coveredBy(VAtX.get(a), y)) { System.out.println("Invalid"); return; }
+            // right endpoint (b,y)
+            if (b != 0 && b != n && !coveredBy(VAtX.get(b), y)) { System.out.println("Invalid"); return; }
+        }
+        // ---------------------------------------------------------------------
+
+        // discretize
+        int[] xs = xsSet.stream().mapToInt(Integer::intValue).toArray();
+        int[] ys = ysSet.stream().mapToInt(Integer::intValue).toArray();
+        int W = xs.length - 1, H = ys.length - 1;
+        if (W <= 0 || H <= 0) { System.out.println("Invalid"); return; }
+
+        HashMap<Integer,Integer> xIndex = new HashMap<>();
+        HashMap<Integer,Integer> yIndex = new HashMap<>();
+        for (int i = 0; i < xs.length; i++) xIndex.put(xs[i], i);
+        for (int j = 0; j < ys.length; j++) yIndex.put(ys[j], j);
+
+        boolean[][] vWall = new boolean[W][H];
+        boolean[][] hWall = new boolean[W][H];
+
+        for (int[] v : vertical) {
+            int x = v[0], y1 = v[1], y2 = v[2];
+            int k = xIndex.get(x);
+            int colBoundary = k - 1;
+            for (int j = yIndex.get(y1); j < yIndex.get(y2); j++)
+                if (colBoundary >= 0 && colBoundary < W) vWall[colBoundary][j] = true;
+        }
+        for (int[] h : horizontal) {
+            int y = h[0], x1 = h[1], x2 = h[2];
+            int k = yIndex.get(y);
+            int rowBoundary = k - 1;
+            for (int i = xIndex.get(x1); i < xIndex.get(x2); i++)
+                if (rowBoundary >= 0 && rowBoundary < H) hWall[i][rowBoundary] = true;
+        }
+
+        int[][] comp = new int[W][H];
+        for (int[] a : comp) Arrays.fill(a, -1);
+        int compCnt = 0;
+
+        List<Integer> minI = new ArrayList<>(), maxI = new ArrayList<>();
+        List<Integer> minJ = new ArrayList<>(), maxJ = new ArrayList<>();
+        List<Integer> count = new ArrayList<>();
+        List<int[]> repr = new ArrayList<>();
+
+        for (int i = 0; i < W; i++) {
+            for (int j = 0; j < H; j++) {
+                if (comp[i][j] != -1) continue;
+                int id = compCnt++;
+                ArrayDeque<int[]> q = new ArrayDeque<>();
+                q.add(new int[]{i, j});
+                comp[i][j] = id;
+                int mi = i, MaI = i, mj = j, MaJ = j, cells = 0;
+                int[] rep = new int[]{i, j};
+                while (!q.isEmpty()) {
+                    int[] cur = q.poll();
+                    int x = cur[0], y = cur[1];
+                    cells++;
+                    mi = Math.min(mi, x); MaI = Math.max(MaI, x);
+                    mj = Math.min(mj, y); MaJ = Math.max(MaJ, y);
+
+                    if (x + 1 < W && !vWall[x][y] && comp[x + 1][y] == -1) { comp[x + 1][y] = id; q.add(new int[]{x + 1, y}); }
+                    if (x - 1 >= 0 && !vWall[x - 1][y] && comp[x - 1][y] == -1) { comp[x - 1][y] = id; q.add(new int[]{x - 1, y}); }
+                    if (y + 1 < H && !hWall[x][y] && comp[x][y + 1] == -1) { comp[x][y + 1] = id; q.add(new int[]{x, y + 1}); }
+                    if (y - 1 >= 0 && !hWall[x][y - 1] && comp[x][y - 1] == -1) { comp[x][y - 1] = id; q.add(new int[]{x, y - 1}); }
+                }
+                minI.add(mi); maxI.add(MaI);
+                minJ.add(mj); maxJ.add(MaJ);
+                count.add(cells);
+                repr.add(rep);
+            }
+        }
+
+        // rectangle validation of each partition
+        for (int id = 0; id < compCnt; id++) {
+            int wi = maxI.get(id) - minI.get(id) + 1;
+            int hi = maxJ.get(id) - minJ.get(id) + 1;
+            if (wi * hi != count.get(id)) { System.out.println("Invalid"); return; }
+        }
+
+        // adjacency graph
+        ArrayList<HashSet<Integer>> g = new ArrayList<>();
+        for (int i = 0; i < compCnt; i++) g.add(new HashSet<>());
+
+        for (int i = 0; i < W - 1; i++)
+            for (int j = 0; j < H; j++)
+                if (vWall[i][j]) { int a = comp[i][j], b = comp[i + 1][j]; if (a != b) { g.get(a).add(b); g.get(b).add(a); } }
+
+        for (int i = 0; i < W; i++)
+            for (int j = 0; j < H - 1; j++)
+                if (hWall[i][j]) { int a = comp[i][j], b = comp[i][j + 1]; if (a != b) { g.get(a).add(b); g.get(b).add(a); } }
+
+        // bipartition by parity of any cell inside the component
+        ArrayList<Integer> leftNodes = new ArrayList<>();
+        int[] side = new int[compCnt];
+        for (int id = 0; id < compCnt; id++) {
+            int[] r = repr.get(id);
+            side[id] = (r[0] + r[1]) & 1;
+            if (side[id] == 0) leftNodes.add(id);
+        }
+
+        int[] pairU = new int[compCnt];
+        int[] pairV = new int[compCnt];
+        Arrays.fill(pairU, -1);
+        Arrays.fill(pairV, -1);
+
+        int matching = hopcroftKarp(leftNodes, g, side, pairU, pairV);
+        int answer = compCnt - matching;
+        System.out.println(answer);
+    }
+
+    // Hopcroft–Karp
+    static int hopcroftKarp(List<Integer> leftNodes, List<HashSet<Integer>> g, int[] side,
+                            int[] pairU, int[] pairV) {
+        int INF = 1 << 29;
+        int[] dist = new int[pairU.length];
+        int matching = 0;
+        while (bfs(leftNodes, g, side, pairU, pairV, dist, INF)) {
+            for (int u : leftNodes)
+                if (pairU[u] == -1 && dfs(u, g, side, pairU, pairV, dist))
+                    matching++;
+        }
+        return matching;
+    }
+
+    static boolean bfs(List<Integer> leftNodes, List<HashSet<Integer>> g, int[] side,
+                       int[] pairU, int[] pairV, int[] dist, int INF) {
+        ArrayDeque<Integer> q = new ArrayDeque<>();
+        Arrays.fill(dist, INF);
+        boolean reachable = false;
+        for (int u : leftNodes) if (pairU[u] == -1) { dist[u] = 0; q.add(u); }
+        while (!q.isEmpty()) {
+            int u = q.poll();
+            for (int v : g.get(u)) if (side[v] == 1) {
+                int pu = pairV[v];
+                if (pu == -1) reachable = true;
+                else if (dist[pu] == INF) { dist[pu] = dist[u] + 1; q.add(pu); }
+            }
+        }
+        return reachable;
+    }
+
+    static boolean dfs(int u, List<HashSet<Integer>> g, int[] side,
+                       int[] pairU, int[] pairV, int[] dist) {
+        for (int v : g.get(u)) if (side[v] == 1) {
+            int pu = pairV[v];
+            if (pu == -1 || (dist[pu] == dist[u] + 1 && dfs(pu, g, side, pairU, pairV, dist))) {
+                pairU[u] = v; pairV[v] = u; return true;
+            }
+        }
+        dist[u] = Integer.MAX_VALUE / 2;
+        return false;
+    }
+}
