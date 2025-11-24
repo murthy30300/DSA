@@ -1,7 +1,0 @@
-package com.disjointset;
-class Edge implements<Comparable>{
-	
-}
-class Kruskals {
-
-}
